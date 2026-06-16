@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import ServiceManagement
 
 struct SettingsView: View {
@@ -18,6 +19,12 @@ struct SettingsView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(width: 760, height: 520)
+        .onAppear {
+            NSApp.setActivationPolicy(.regular)
+        }
+        .onDisappear {
+            NSApp.setActivationPolicy(.accessory)
+        }
     }
 
     private var tabBar: some View {
@@ -358,21 +365,28 @@ struct GroupChip: View {
 // MARK: - About
 
 struct AboutView: View {
-    private var version: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+    private var versionString: String {
+        let info = Bundle.main.infoDictionary
+        let version = info?["CFBundleShortVersionString"] as? String ?? "1.0"
+        let build = info?["CFBundleVersion"] as? String ?? "1"
+        return "Version \(version) (Build \(build))"
+    }
+
+    private var currentYear: Int {
+        Calendar.current.component(.year, from: Date())
     }
 
     var body: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 12) {
             Image("logo")
                 .resizable()
                 .scaledToFit()
-                .frame(width: 192, height: 192)
+                .frame(width: 160, height: 160)
 
             Text("UpturtleMon")
                 .font(.system(size: 22, weight: .semibold))
 
-            Text("Version \(version)")
+            Text(versionString)
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
 
@@ -380,40 +394,83 @@ struct AboutView: View {
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-                .frame(maxWidth: 360)
+                .frame(maxWidth: 480)
 
-            HStack(spacing: 12) {
-                Link(destination: URL(string: "https://github.com/Z3nto/upturtle")!) {
-                    Label("Upturtle server", systemImage: "server.rack")
-                        .font(.system(size: 12, weight: .medium))
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(Color.accentColor)
-
-                Text("·").foregroundStyle(.tertiary)
-
-                Link(destination: URL(string: "https://github.com/Z3nto/upturtle/issues")!) {
-                    Label("Report an issue", systemImage: "exclamationmark.bubble")
-                        .font(.system(size: 12, weight: .medium))
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(Color.accentColor)
+            VStack(spacing: 6) {
+                AboutLink(
+                    title: "UpturtleMon on GitHub",
+                    url: URL(string: "https://github.com/akandor/UpturtleMon")!,
+                    icon: .github
+                )
+                AboutLink(
+                    title: "Report an issue",
+                    url: URL(string: "https://github.com/akandor/UpturtleMon/issues")!,
+                    icon: .system("exclamationmark.bubble")
+                )
+                AboutLink(
+                    title: "Upturtle on GitHub",
+                    url: URL(string: "https://github.com/Z3nto/upturtle")!,
+                    icon: .github
+                )
             }
             .padding(.top, 4)
 
-            Spacer()
+            Spacer(minLength: 8)
 
             VStack(spacing: 4) {
-                Text("Powered by ") +
-                Text("Upturtle").font(.system(size: 11, weight: .semibold)) +
-                Text(" by Z3nto · upturtle is MIT licensed.")
-                Text("© 2026 toepper.rocks")
+                (Text("Powered by ") +
+                 Text("Upturtle").font(.system(size: 11, weight: .semibold)) +
+                 Text(" by Z3nto · Upturtle is MIT licensed."))
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+
+                HStack(spacing: 4) {
+                    Text(verbatim: "© \(currentYear)")
+                        .foregroundStyle(.tertiary)
+                    Link("Toepper.Rocks", destination: URL(string: "https://toepper.rocks")!)
+                        .foregroundStyle(Color.accentColor)
+                }
+                .font(.system(size: 11))
             }
-            .font(.system(size: 11))
-            .foregroundStyle(.tertiary)
             .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: 540)
         }
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+private struct AboutLink: View {
+    enum IconKind {
+        case github
+        case system(String)
+    }
+
+    let title: String
+    let url: URL
+    let icon: IconKind
+
+    var body: some View {
+        Link(destination: url) {
+            Label {
+                Text(title)
+                    .fixedSize()
+            } icon: {
+                switch icon {
+                case .github:
+                    Image("github-mark")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 13, height: 13)
+                case .system(let name):
+                    Image(systemName: name)
+                        .font(.system(size: 12))
+                }
+            }
+            .font(.system(size: 12, weight: .medium))
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(Color.accentColor)
     }
 }

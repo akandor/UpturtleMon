@@ -6,18 +6,21 @@ UpturtleMon lives in your menu bar, polls your Upturtle server on each monitor's
 
 ## Features
 
-- **Per-monitor polling** — each monitor refreshes at its server-configured interval; no fixed global tick.
-- **Status popup** — grouped monitor list with status badge, uptime %, last-checked time, and a 20-bar history strip; bar hover shows the exact timestamp and status.
-- **Response-time chart** — click a monitor to expand a Swift Charts line + area graph; cursor-tracking tooltip with timestamp, latency, and status; red dots mark failures.
-- **Monitor selection** — choose which monitors appear in the popup; activations persist across launches.
-- **Group order** — respects the group order configured on the server (via `/api/groups`).
-- **Clickable URLs** — HTTP monitor targets open in your default browser.
-- **Settings** — server URL, API token, language, and a one-click "Start on Login" toggle (uses `SMAppService`).
-- **Native menu bar app** — runs as a `LSUIElement` (no Dock icon), template menu bar icon, popup window styled with `MenuBarExtra(.window)`.
+- **Per-monitor polling** — each monitor refreshes at its server-configured interval (clamped to a 5-second floor); no fixed global tick.
+- **Bulk reconciliation** — `GET /api/monitors` is hit every 5 minutes (and on demand) to pick up new/removed monitors, re-sync history, and recover from per-monitor failures.
+- **Grouped popup** — monitor list grouped by their server-side group, with the group order resolved from `GET /api/groups` rather than alphabetical.
+- **History strip** — last 20 checks per monitor as colored bars. Hover any bar to see the exact timestamp and outcome in a custom blur-style tooltip.
+- **Click-to-expand chart** — clicking a row drops down a Swift Charts response-time graph for that monitor, with avg / min / max stats, red failure dots, and a cursor-tracking tooltip showing time, latency, and status.
+- **Outage alert in the menu bar** — when any selected monitor goes down, the menu bar icon turns red. It returns to the standard tinted template the moment everything is up again.
+- **Clickable HTTP targets** — for HTTP/HTTPS monitors, the target URL is rendered as a real link and opens in your default browser.
+- **Monitor activation** — choose which monitors appear in the popup; activations persist across launches. New monitors on the server land in the **Available** column until you opt them in.
+- **Settings window** — server URL, API token, language, and a one-click "Start on Login" toggle (uses `SMAppService`). Window pops to front when the gear button is clicked, even from the menu bar agent.
+- **Dock icon on demand** — the app runs as a menu bar agent (`LSUIElement`), but the moment the Settings window opens, a Dock icon appears so you can find or Cmd-Tab back to the window. The icon disappears again when Settings closes.
+- **Refresh on settings change** — saving a new server URL or token in **General** triggers an immediate bulk refresh.
 
 ## Requirements
 
-- macOS 26 (Tahoe) or later
+- macOS 15.6 (Sequoia) or later
 - An Upturtle server you can reach over the network (HTTP/S)
 - An API token from your Upturtle server (generate one in your user profile under API keys)
 
@@ -32,33 +35,34 @@ The first successful fetch automatically activates every monitor on the server. 
 
 ## How polling works
 
-- On launch and every 5 minutes thereafter, UpturtleMon hits `GET /api/monitors` to reconcile the monitor list, group names, and authoritative history.
-- For each monitor returned, a per-monitor task is scheduled at that monitor's own `config.interval` (clamped to a 5-second floor). Each tick calls `GET /api/monitors/{id}` and appends one history bar locally if the server's `last_checked` advanced.
+- On launch and every 5 minutes thereafter, UpturtleMon hits `GET /api/monitors` (and `GET /api/groups` in parallel) to reconcile the monitor list, group names, group order, and authoritative history.
+- For each monitor returned, a per-monitor task is scheduled at that monitor's own `config.interval`. Each tick calls `GET /api/monitors/{id}` and appends one history bar locally if the server's `last_checked` advanced.
 - Bulk failures surface in the popup footer; per-monitor failures stay silent — the next bulk refresh resolves them.
 
 ## API endpoints used
 
-| Endpoint | Purpose |
-| --- | --- |
-| `GET /api/monitors` | Bulk list of all monitor snapshots with history |
-| `GET /api/monitors/{id}` | Single-monitor live snapshot (status + last_checked + last_latency) |
-| `GET /api/groups` | Group names + order (used to sort groups in the popup) |
+| Endpoint | Auth | Purpose |
+| --- | --- | --- |
+| `GET /api/monitors` | bearer | Bulk list of all monitor snapshots with history |
+| `GET /api/monitors/{id}` | bearer | Single-monitor live snapshot (status + last_checked + last_latency) |
+| `GET /api/groups` | bearer | Group names + order (used to sort groups in the popup and resolve group_id → name) |
 
-All requests send `Authorization: Bearer <api-token>` when the token is set.
+All requests send `Authorization: Bearer <api-token>` when a token is set.
 
 ## Project layout
 
 ```
 UpturtleMon/
 ├── UpturtleMon/
-│   ├── UpturtleMonApp.swift       # MenuBarExtra + Settings Window scenes
+│   ├── UpturtleMonApp.swift       # MenuBarExtra + Settings Window scenes; red/normal menu bar icon
 │   ├── ContentView.swift          # Popup view
 │   ├── Monitor.swift              # Monitor / MonitorGroup / HistoryEntry models
-│   ├── MonitorRowView.swift       # Single monitor row + history bars w/ hover tooltip
-│   ├── MonitorChartView.swift     # Expanded Swift Charts response-time graph
-│   ├── MonitorStore.swift         # @Observable store; per-monitor polling
+│   ├── MonitorRowView.swift       # Single monitor row, history bars + hover tooltip
+│   ├── MonitorChartView.swift     # Expanded Swift Charts graph + cursor-tracking tooltip
+│   ├── MonitorStore.swift         # @Observable store; per-monitor polling + bulk reconcile
 │   ├── UpturtleClient.swift       # Async REST client + Codable wire models
-│   ├── SettingsView.swift         # General / Monitors / About tabs
+│   ├── SettingsView.swift         # General / Monitors / About tabs; toggles dock icon
+│   ├── AppIcon.icon/              # App icon (Xcode 16 App Icon Composer format)
 │   └── Assets.xcassets/
 └── UpturtleMon.entitlements        # App sandbox + network.client
 ```
@@ -74,7 +78,7 @@ Or just open `UpturtleMon.xcodeproj` in Xcode and hit Run.
 ## Credits
 
 - Built on top of the [Upturtle](https://github.com/Z3nto/upturtle) server by Z3nto.
-- Logo by toepper.rocks.
+- Logo by [Toepper.Rocks](https://toepper.rocks).
 
 ## License
 
