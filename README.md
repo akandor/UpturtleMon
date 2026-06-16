@@ -78,8 +78,6 @@ Or just open `UpturtleMon.xcodeproj` in Xcode and hit Run.
 ## Credits
 
 - Built on top of the [Upturtle](https://github.com/Z3nto/upturtle) server by Z3nto.
-- Logo by [Toepper.Rocks](https://toepper.rocks).
-
 ## License
 
 MIT.
